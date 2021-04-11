@@ -3,6 +3,10 @@ import requests
 from flask import Flask, request
 app = Flask(__name__)
 
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
 # Adds support for GET requests to our webhook
 @app.route('/webhook',methods=['GET'])
 def webhook():
