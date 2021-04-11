@@ -1,35 +1,61 @@
-import credentials
-import requests
-from flask import Flask, request
-app = Flask(__name__)
+#chatbot + discord
+import discord
+import os
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
+from chatterbot.trainers import ListTrainer
 
-# Adds support for GET requests to our webhook
-@app.route('/webhook',methods=['GET'])
-def webhook():
-    verify_token = request.args.get("hub.verify_token")
-    # Check if sent token is correct
-    if verify_token == credentials.WEBHOOK_VERIFY_TOKEN:
-        # Responds with the challenge token from the request
-        return request.args.get("hub.challenge")
-    return 'Unable to authorise.'
+from chatterbot.response_selection import get_random_response
 
-# Adds support for POST requests
+#ChatBot
+bot = ChatBot(
+    '1ZUMI',
+    storage_adapter='chatterbot.storage.SQLStorageAdapter',
+    logic_adapters=[
+        "chatterbot.logic.BestMatch",
+        'chatterbot.logic.MathematicalEvaluation',
+        'chatterbot.logic.TimeLogicAdapter'
+    ],
+    database_uri='sqlite:///database.sqlite3'
+)
 
-@app.route("/webhook", methods=['POST'])
-def webhook():
-    data = request.get_json()
-    message = data['entry'][0]['messaging'][0]['message']
-    sender_id = data['entry'][0]['messaging'][0]['sender']['id']
-    if message['text']:
-        request_body = {
-                'recipient': {
-                    'id': sender_id
-                },
-                'message': {"text":"hello, world!"}
-            }
-        response = requests.post('https://graph.facebook.com/v5.0/me/messages?access_token='+credentials.TOKEN,json=request_body).json()
-        return response
-    return 'ok'
+conv = open('./train/traindata.txt', 'r').readlines()
 
-if __name__ == "__main__":
-    app.run(threaded=True, port=5000)
+bot.set_trainer(ListTrainer)
+
+bot.train(conv)
+
+#trainer = ChatterBotCorpusTrainer(bot)
+#trainer.train(
+#  "./train/conversation.yml"
+#)
+#End ChatBot
+
+client = discord.Client()
+
+@client.event
+async def on_ready():
+  print('Ta bien {0.user} '.format(client))
+
+@client.event
+async def on_message(message):
+  print(message.content)
+  #print(message.channel)
+
+  #boti = bot.get_response(str(message.content))
+  #print(boti)
+  #await message.reply(boti)
+
+  if message.author == client.user:
+    return
+  else:
+    bot_input = bot.get_response(message.content)
+    print(bot_input)
+    await message.reply(bot_input)
+
+  if message.content.startswith('$hola'):
+    await message.channel.send('Hola bobo')
+
+  #video discord 21:18
+
+client.run(os.getenv('TOKEN'))
